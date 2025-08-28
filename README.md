@@ -5,3 +5,6 @@ This repository contains:
 01. Mapping
 
 02. eReefs
+* Input spreadsheets at the zone and plot level for sampling locations on the GBR under project RRAP-Eco03.
+* Scripts for wrangling and summarising downloaded eReefs data for biogeochemical (BGC) and hydrological (hydro) variables.
+* Spreadsheets containing summarised environmental data at the zone level.
