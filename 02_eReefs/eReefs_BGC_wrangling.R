@@ -1,3 +1,7 @@
+# Byrne, 2025
+# Environmental data wrangling - Bio-geochemical
+# Simplified version for pre-filtered depth data (-9m and -2.35m)
+
 # Load required libraries
 library(tidyverse)
 library(lubridate)
@@ -5,9 +9,9 @@ library(lubridate)
 setwd("~/Documents/GitHub/shysDelineation-WGS/metadata")
 
 # Read the data
-data <- read_csv("GBR4_BGC_q3R_monthly_eco03.csv")
+data <- read_csv("eReefs_BGC_monthly.csv")
 
-# Alternative date parsing if ymd_hm doesn't work
+# Date parsing
 data <- data %>%
   mutate(
     DateTime = as.POSIXct(`Aggregated Date/Time`, format = "%Y-%m-%dT%H:%M"),
@@ -16,7 +20,7 @@ data <- data %>%
     YearMonth = format(DateTime, "%Y-%m")
   )
 
-# Step 1: Calculate monthly summaries for each site
+# Calculate monthly summaries for each site
 monthly_by_site <- data %>%
   group_by(`Site Name`, Latitude, Longitude, Depth, Variable, YearMonth) %>%
   summarise(
@@ -111,15 +115,6 @@ site_summary_wide <- site_summary_wide %>%
   select(all_of(existing_cols))
 
 # Save the wide format summary
-write_csv(site_summary_wide, "GBR4_BGC_q3R_monthly_eco03_summarised_wide.csv")
+write_csv(site_summary_wide, "eReefs_BGC_monthly_aggregated_wide.csv")
 
-site_summary_wide$`Site Name` <- site_summary_wide$EcoLocationID_short
-
-#water <- read_csv("GBR4_BGC_q3R_monthly_eco03_summarised_wide.csv")
-#forest <- read_csv("RRAP_ECO03_Shys_gradientForest_clean_new.csv")
-
-#full <- merge(forest, water, by.x = "EcoLocationID_short", by.y = "EcoLocationID_short",
-      #all.x = TRUE)
-
-write_csv(full, "RRAP_ECO03_Shys_gradientForest_clean_full.csv")
 

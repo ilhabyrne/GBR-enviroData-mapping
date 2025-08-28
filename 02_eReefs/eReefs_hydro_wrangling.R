@@ -1,4 +1,6 @@
-# Coral Environmental Data Aggregation for Seriatopora hystrix Population Genomics
+# Byrne, 2025
+# Environmental data wrangling - hydro
+# temp, salinity, wind speed, currents
 # Simplified version for pre-filtered depth data (-9m and -2.35m)
 
 # Load required libraries
@@ -13,7 +15,7 @@ cv <- function(x) {
   sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)
 }
 
-# Function to calculate Maximum Monthly Mean (MMM) - critical for coral bleaching thresholds
+# Function to calculate Maximum Monthly Mean (MMM) 
 calculate_mmm <- function(data) {
   data %>%
     mutate(
@@ -54,7 +56,6 @@ calculate_mean_annual <- function(data) {
 }
 
 # Function to calculate same metrics for non-temperature variables
-# (MMM, mean annual, monthly variability - same as temperature)
 calculate_same_metrics_for_other_vars <- function(data) {
   # Calculate MMM (Maximum Monthly Mean)
   mmm_result <- calculate_mmm(data)
@@ -174,7 +175,7 @@ aggregate_environmental_data <- function(file_path) {
   return(final_data)
 }
 
-# Function to create wide format for population genomics analysis
+# Function to create wide format
 create_wide_format <- function(aggregated_data) {
   
   # Create variable names that include depth information
