@@ -224,58 +224,115 @@ ggsave(plot = p_temp_site, "mean_SD_temp.png", dpi = 300, width = 6, height = 4)
 # 4. PCA OF ENVIRONMENTAL VARIABLES
 # -----------------------------------------------------------------------------
 
-# Prepare data for PCA (remove NAs and scale)
-pca_data <- dat_unique %>%
-  dplyr::select(locality, all_of(env_vars)) %>%
-  drop_na()
+library(RColorBrewer)
 
-# Run PCA
-pca_result <- prcomp(pca_data[, env_vars], center = TRUE, scale. = TRUE)
+# Create palette
+colR <- colorRampPalette(brewer.pal(11, "RdYlBu"))(29)
 
-# Summary
+# Override the problem colors
+colR[15] <- "#A1D99B"  # Chicken - light green
+colR[16] <- "#74C476"  # Davies - medium light green
+colR[17] <- "#41AB5D"  # Little Broadhurst - slightly darker green
+colR[18] <- "#6BAED6"  # Martin - darker light blue
+colR[19] <- "#4292C6"  # East Cay - slightly darker blue
+colR[27] <- "#4292C6"  # Sykes - slightly darker blue
+
+# Create named vector matching your locality column names
+# Adjust these to match exactly what's in your data
+locality_colors <- c(
+  "Dungeness"        = colR[1],
+  "Masig"            = colR[2],
+  "Aukane"           = colR[3],
+  "Hicks"            = colR[4],
+  "No_Name"          = colR[5],
+  "Lizard"           = colR[6],
+  "Martin"           = colR[6],
+  "North_Direction"  = colR[7],
+  "Mackay"           = colR[8],
+  "St_Crispin"       = colR[9],
+  "Moore_Reef"       = colR[10],
+  "Fitzroy_Island"   = colR[11],
+  "Kelso"            = colR[12],
+  "Pelorus"          = colR[13],
+  "Orpheus"          = colR[14],
+  "Chicken"          = colR[15],
+  "Davies"           = colR[16],
+  "Little_Broadhurst"= colR[17],
+  "East_Cay"         = colR[19],
+  "Reef21-550"      = colR[20],
+  "North_Keppel"     = colR[21],
+  "Miall"            = colR[22],
+  "Middle"           = colR[23],
+  "Great_Keppel"     = colR[24],
+  "Halfway"          = colR[25],
+  "Heron"            = colR[26],
+  "Sykes"            = colR[27],
+  "Fitzroy_Reef"     = colR[28],
+  "Lady_Musgrave"    = colR[29]
+)
+
+pca_result <- prcomp(dat_unique[, env_vars], center = TRUE, scale. = TRUE)
 pca_summary <- summary(pca_result)
-print(pca_summary$importance[, 1:5])
 
-# Extract scores and loadings
+# Extract scores
 pca_scores <- as.data.frame(pca_result$x) %>%
-  mutate(locality = pca_data$locality)
+  mutate(locality = dat_unique$locality)
 
+# Extract loadings
 pca_loadings <- as.data.frame(pca_result$rotation) %>%
   mutate(variable = rownames(.))
 
-# --- 4a. PCA biplot (PC1 vs PC2) ---
-# Calculate scaling factor for loadings
+# Scale factor for arrows
 scale_factor <- min(
   (max(pca_scores$PC1) - min(pca_scores$PC1)) / (max(abs(pca_loadings$PC1)) * 2),
   (max(pca_scores$PC2) - min(pca_scores$PC2)) / (max(abs(pca_loadings$PC2)) * 2)
 )
 
-# Select top loadings to display
+# Top loadings
 top_loadings <- pca_loadings %>%
   mutate(loading_magnitude = sqrt(PC1^2 + PC2^2)) %>%
   slice_max(loading_magnitude, n = 15)
 
+# Filter out non-focal sites
+pca_scores_focal <- pca_scores %>%
+  filter(!locality %in% c("Dungeness", "Tydeman", "MacGillivray",
+                          "Myrmidon", "Magnetic_Island", "North_Keppel",
+                          "Miall", "Middle", "Halfway", "Great_Keppel", 
+                          "Lizard", "Moore_Reef"))
+
+# Get latitude order (N to S)
+locality_lat_order <- dat %>%
+  group_by(locality) %>%
+  summarise(lat = mean(decimalLatitude, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(lat)) %>%
+  pull(locality)
+
+# Apply factor ordering
+pca_scores_focal <- pca_scores_focal %>%
+  mutate(locality = factor(locality, levels = locality_lat_order))
+
+# --- 4a. PCA by reef ---
+# Color points by reef
 p_pca <- ggplot() +
-  # Sites
-  geom_point(data = pca_scores, aes(x = PC1, y = PC2), 
-             alpha = 0.7, size = 3, color = "#0072B2") +
-  geom_text_repel(data = pca_scores, aes(x = PC1, y = PC2, label = locality),
-                  size = 2.5, max.overlaps = 10) +
-  # Loadings as arrows
+  geom_point(data = pca_scores_focal, aes(x = PC1, y = PC2, color = locality), 
+             alpha = 0.8, size = 4) +
   geom_segment(data = top_loadings,
                aes(x = 0, y = 0, xend = PC1 * scale_factor * 0.8, yend = PC2 * scale_factor * 0.8),
-               arrow = arrow(length = unit(0.2, "cm")), color = "#D55E00", alpha = 0.7) +
+               arrow = arrow(length = unit(0.2, "cm")), color = "gray40", alpha = 0.7) +
   geom_text_repel(data = top_loadings,
                   aes(x = PC1 * scale_factor * 0.85, y = PC2 * scale_factor * 0.85, label = variable),
-                  size = 2, color = "#D55E00", max.overlaps = 20) +
+                  size = 2.5, color = "gray30", max.overlaps = 20) +
+  scale_color_manual(values = locality_colors, name = "Reef") +
   labs(x = paste0("PC1 (", round(pca_summary$importance[2,1]*100, 1), "%)"),
        y = paste0("PC2 (", round(pca_summary$importance[2,2]*100, 1), "%)"),
        subtitle = "Top 15 loadings shown") +
   theme_bw() +
-  coord_fixed()
+  coord_fixed() +
+  guides(color = guide_legend(ncol = 1))
+
 p_pca
 
-ggsave("pca_biplot.png", p_pca, width = 10, height = 10, dpi = 150)
+ggsave("pca_biplot_focal.png", p_pca, width = 6, height = 5, dpi = 300)
 
 # --- 4b. PCA by variable type ---
 # Color loadings by variable type
@@ -305,87 +362,108 @@ ggsave("pca_loadings_by_type.png", p_loadings, width = 5, height = 5, dpi = 300)
 # 5. WIND ROSE VISUALIZATION
 # -----------------------------------------------------------------------------
 
-# Check if wind direction and speed are available
+# -----------------------------------------------------------------------------
+# WIND ROSES BY LOCALITY
+# -----------------------------------------------------------------------------
+
 if(all(c("mean_wind_direction", "mean_wind_speed") %in% names(dat))) {
   
-  # For wind roses, we need the circular package
-  # install.packages("circular") if needed
-  
-  # Simple wind rose using base R approach
   wind_data <- dat_unique %>%
-    select(locality, mean_wind_direction, mean_wind_speed) %>%
+    dplyr::select(locality, decimalLatitude, mean_wind_direction, mean_wind_speed) %>%
     drop_na() %>%
     mutate(
-      # Convert direction to cardinal sectors (8 sectors)
       direction_sector = cut(mean_wind_direction, 
                              breaks = seq(-22.5, 337.5, 45),
                              labels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")),
-      # Speed categories
       speed_cat = cut(mean_wind_speed, 
                       breaks = quantile(mean_wind_speed, probs = c(0, 0.25, 0.5, 0.75, 1)),
                       labels = c("Low", "Med-Low", "Med-High", "High"),
                       include.lowest = TRUE)
-    )
-  
-  # If direction wraps around 360 to 0, handle the N sector
-  wind_data <- wind_data %>%
+    ) %>%
     mutate(direction_sector = case_when(
       mean_wind_direction > 337.5 | mean_wind_direction <= 22.5 ~ "N",
       TRUE ~ as.character(direction_sector)
-    ))
-  
-  # Summarize by direction
-  wind_summary <- wind_data %>%
-    count(direction_sector) %>%
-    mutate(
-      direction_sector = factor(direction_sector, 
-                                levels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")),
-      proportion = n / sum(n)
-    )
-  
-  # Wind rose plot
-  p_wind_rose <- ggplot(wind_summary, aes(x = direction_sector, y = proportion)) +
-    geom_col(fill = "#0072B2", alpha = 0.7, width = 0.8) +
-    coord_polar(start = 0) +
-    labs(title = "Wind Direction Distribution",
-         subtitle = "Mean wind direction across sites",
-         y = "Proportion of sites") +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(size = 10, face = "bold"),
-      axis.title.x = element_blank()
-    )
-  
-  ggsave("wind_rose_simple.png", p_wind_rose, width = 8, height = 8, dpi = 150)
-  
-  # --- More detailed wind rose with speed ---
-  wind_detail <- wind_data %>%
-    count(direction_sector, speed_cat) %>%
+    )) %>%
     mutate(direction_sector = factor(direction_sector, 
                                      levels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")))
   
-  p_wind_rose_detail <- ggplot(wind_detail, aes(x = direction_sector, y = n, fill = speed_cat)) +
-    geom_col(width = 0.8) +
+  # Filter to focal localities
+  wind_data_focal <- wind_data %>%
+    filter(!locality %in% c("Dungeness", "Tydeman", "MacGillivray",
+                            "Myrmidon", "Magnetic_Island", "North_Keppel",
+                            "Miall", "Middle", "Halfway", "Great_Keppel", 
+                            "Lizard", "Moore_Reef"))
+  
+  # Order by latitude
+  locality_lat_order <- wind_data_focal %>%
+    group_by(locality) %>%
+    summarise(lat = mean(decimalLatitude, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(lat)) %>%
+    pull(locality)
+  
+  wind_data_focal <- wind_data_focal %>%
+    mutate(locality = factor(locality, levels = locality_lat_order))
+  
+  # Create summary for each locality - need all direction sectors represented
+  all_sectors <- expand.grid(
+    locality = unique(wind_data_focal$locality),
+    direction_sector = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+  ) %>%
+    mutate(direction_sector = factor(direction_sector, 
+                                     levels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")))
+  
+  wind_summary_by_site <- wind_data_focal %>%
+    count(locality, direction_sector) %>%
+    right_join(all_sectors, by = c("locality", "direction_sector")) %>%
+    mutate(n = replace_na(n, 0)) %>%
+    group_by(locality) %>%
+    mutate(proportion = n / sum(n)) %>%
+    ungroup()
+  
+  # Faceted wind rose
+  p_wind_rose_facet <- ggplot(wind_summary_by_site, aes(x = direction_sector, y = proportion)) +
+    geom_col(fill = "#0072B2", alpha = 0.7, width = 0.8) +
     coord_polar(start = 0) +
-    scale_fill_viridis_d(option = "plasma", direction = -1) +
-    labs(title = "Wind Rose by Direction and Speed",
-         subtitle = "Site distribution",
-         fill = "Wind Speed",
-         y = "Count") +
+    facet_wrap(~ locality, ncol = 5) +
+    labs(title = "",
+         subtitle = "Ordered N to S",
+         y = "Proportion") +
     theme_minimal() +
     theme(
-      axis.text.x = element_text(size = 10, face = "bold"),
-      axis.title.x = element_blank()
+      axis.text.x = element_text(size = 6),
+      axis.title.x = element_blank(),
+      strip.text = element_text(size = 8, face = "bold"),
+      panel.spacing = unit(0.5, "lines")
     )
   
-  ggsave("wind_rose_with_speed.png", p_wind_rose_detail, width = 8, height = 8, dpi = 150)
+  ggsave("wind_rose_by_locality.png", p_wind_rose_facet, width = 7, height = 8, dpi = 300)
+  
+  # Alternative: color by locality instead of faceting
+  p_wind_locality_color <- ggplot(wind_data_focal, 
+                                  aes(x = mean_wind_direction, fill = locality)) +
+    geom_histogram(binwidth = 22.5, boundary = 0, alpha = 0.7) +
+    coord_polar(start = 0) +
+    scale_x_continuous(breaks = seq(0, 315, 45), 
+                       labels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW"),
+                       limits = c(0, 360)) +
+    scale_fill_manual(values = locality_colors, name = "Locality") +
+    labs(title = "",
+         x = "", y = "Count") +
+    theme_minimal() +
+    guides(fill = guide_legend(ncol = 2))
+  
+  ggsave("wind_direction_by_locality_stacked.png", p_wind_locality_color, 
+         width = 10, height = 10, dpi = 300)
 }
 
-# Similar for current direction
+# -----------------------------------------------------------------------------
+# CURRENT ROSES BY LOCALITY
+# -----------------------------------------------------------------------------
+
 if(all(c("mean_current_direction", "mean_current_speed") %in% names(dat))) {
   
   current_data <- dat_unique %>%
-    select(locality, mean_current_direction, mean_current_speed) %>%
+    dplyr::select(locality, decimalLatitude, mean_current_direction, mean_current_speed) %>%
     drop_na() %>%
     mutate(
       direction_sector = cut(mean_current_direction, 
@@ -399,28 +477,77 @@ if(all(c("mean_current_direction", "mean_current_speed") %in% names(dat))) {
     mutate(direction_sector = case_when(
       mean_current_direction > 337.5 | mean_current_direction <= 22.5 ~ "N",
       TRUE ~ as.character(direction_sector)
-    ))
-  
-  current_summary <- current_data %>%
-    count(direction_sector, speed_cat) %>%
+    )) %>%
     mutate(direction_sector = factor(direction_sector, 
                                      levels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")))
   
-  p_current_rose <- ggplot(current_summary, aes(x = direction_sector, y = n, fill = speed_cat)) +
-    geom_col(width = 0.8) +
+  # Filter to focal localities
+  current_data_focal <- current_data %>%
+    filter(!locality %in% c("Dungeness", "Tydeman", "MacGillivray",
+                            "Myrmidon", "Magnetic_Island", "North_Keppel",
+                            "Miall", "Middle", "Halfway", "Great_Keppel", 
+                            "Lizard", "Moore_Reef"))
+  
+  # Order by latitude
+  locality_lat_order <- current_data_focal %>%
+    group_by(locality) %>%
+    summarise(lat = mean(decimalLatitude, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(lat)) %>%
+    pull(locality)
+  
+  current_data_focal <- current_data_focal %>%
+    mutate(locality = factor(locality, levels = locality_lat_order))
+  
+  # Create summary with all sectors represented
+  all_sectors_current <- expand.grid(
+    locality = unique(current_data_focal$locality),
+    direction_sector = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+  ) %>%
+    mutate(direction_sector = factor(direction_sector, 
+                                     levels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW")))
+  
+  current_summary_by_site <- current_data_focal %>%
+    count(locality, direction_sector) %>%
+    right_join(all_sectors_current, by = c("locality", "direction_sector")) %>%
+    mutate(n = replace_na(n, 0)) %>%
+    group_by(locality) %>%
+    mutate(proportion = n / sum(n)) %>%
+    ungroup()
+  
+  # Faceted current rose
+  p_current_rose_facet <- ggplot(current_summary_by_site, aes(x = direction_sector, y = proportion)) +
+    geom_col(fill = "#009E73", alpha = 0.7, width = 0.8) +
     coord_polar(start = 0) +
-    scale_fill_viridis_d(option = "viridis", direction = -1) +
-    labs(title = "Current Rose by Direction and Speed",
-         subtitle = "Site distribution",
-         fill = "Current Speed",
-         y = "Count") +
+    facet_wrap(~ locality, ncol = 5) +
+    labs(title = "",
+         subtitle = "Ordered N to S",
+         y = "Proportion") +
     theme_minimal() +
     theme(
-      axis.text.x = element_text(size = 10, face = "bold"),
-      axis.title.x = element_blank()
+      axis.text.x = element_text(size = 6),
+      axis.title.x = element_blank(),
+      strip.text = element_text(size = 8, face = "bold"),
+      panel.spacing = unit(0.5, "lines")
     )
   
-  ggsave("current_rose.png", p_current_rose, width = 8, height = 8, dpi = 150)
+  ggsave("current_rose_by_locality.png", p_current_rose_facet, width = 7, height = 8, dpi = 300)
+  
+  # Alternative: color by locality
+  p_current_locality_color <- ggplot(current_data_focal, 
+                                     aes(x = mean_current_direction, fill = locality)) +
+    geom_histogram(binwidth = 22.5, boundary = 0, alpha = 0.7) +
+    coord_polar(start = 0) +
+    scale_x_continuous(breaks = seq(0, 315, 45), 
+                       labels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW"),
+                       limits = c(0, 360)) +
+    scale_fill_manual(values = locality_colors, name = "Locality") +
+    labs(title = "",
+         x = "", y = "Count") +
+    theme_minimal() +
+    guides(fill = guide_legend(ncol = 2))
+  
+  ggsave("current_direction_by_locality_stacked.png", p_current_locality_color, 
+         width = 10, height = 10, dpi = 3000)
 }
 
 # -----------------------------------------------------------------------------
@@ -431,12 +558,11 @@ if(all(c("mean_wspeed_u", "mean_wspeed_v") %in% names(dat))) {
   
   # U-V scatter plot for wind
   p_wind_uv <- ggplot(dat_unique, aes(x = mean_wspeed_u, y = mean_wspeed_v)) +
-    geom_point(aes(color = decimalLatitudeOriginal), size = 3, alpha = 0.7) +
+    geom_point(aes(color = decimalLatitude), size = 3, alpha = 0.7) +
     geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
     geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
-    scale_color_viridis_c(option = "plasma") +
+    scale_color_viridis_c(option = "viridis") +
     labs(x = "Mean U (E-W) Component", y = "Mean V (N-S) Component",
-         title = "Wind Vector Components",
          subtitle = "U = eastward (+), V = northward (+)",
          color = "Latitude") +
     theme_bw() +
@@ -449,12 +575,11 @@ if(all(c("mean_u", "mean_v") %in% names(dat))) {
   
   # U-V scatter plot for currents
   p_current_uv <- ggplot(dat_unique, aes(x = mean_u, y = mean_v)) +
-    geom_point(aes(color = decimalLatitudeOriginal), size = 3, alpha = 0.7) +
+    geom_point(aes(color = decimalLatitude), size = 3, alpha = 0.7) +
     geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
     geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
     scale_color_viridis_c(option = "viridis") +
     labs(x = "Mean U (E-W) Component", y = "Mean V (N-S) Component",
-         title = "Current Vector Components",
          subtitle = "U = eastward (+), V = northward (+)",
          color = "Latitude") +
     theme_bw() +
@@ -464,46 +589,15 @@ if(all(c("mean_u", "mean_v") %in% names(dat))) {
 }
 
 # -----------------------------------------------------------------------------
-# 7. SUMMARY STATISTICS AND VARIABLE SELECTION GUIDANCE
+# 7. Hierarchical clustering
 # -----------------------------------------------------------------------------
-
-cat("\n=== SUMMARY AND RECOMMENDATIONS ===\n\n")
-
-# Count correlations above different thresholds
-for(thresh in c(0.9, 0.8, 0.7)) {
-  n_pairs <- sum(abs(cor_matrix_full[upper.tri(cor_matrix_full)]) > thresh)
-  cat(sprintf("Variable pairs with |r| > %.1f: %d\n", thresh, n_pairs))
-}
-
-cat("\n--- Suggested Variable Groups for Reduced Multicollinearity ---\n")
-cat("Consider selecting ONE representative from each highly correlated cluster.\n")
-cat("Run hierarchical clustering on the correlation matrix to identify clusters.\n\n")
 
 # Hierarchical clustering of variables
 var_dist <- as.dist(1 - abs(cor_matrix_full))
 var_clust <- hclust(var_dist, method = "complete")
 
 png("variable_dendrogram.png", width = 14, height = 8, units = "in", res = 150)
-plot(var_clust, main = "Hierarchical Clustering of Environmental Variables",
+plot(var_clust, main = "",
      xlab = "", sub = "Based on correlation distance (1 - |r|)")
 abline(h = 0.3, col = "red", lty = 2)  # Cut-off for r > 0.7
 dev.off()
-
-cat("\nPlots saved:\n")
-cat("  - correlation_matrix_full.png\n")
-cat("  - correlation_matrix_temperature.png\n")
-cat("  - correlation_matrix_wind.png\n")
-cat("  - correlation_matrix_current.png\n")
-cat("  - temperature_vs_latitude.png\n")
-cat("  - temperature_metrics_vs_latitude.png\n")
-cat("  - temperature_by_site.png\n")
-cat("  - pca_biplot.png\n")
-cat("  - pca_scree.png\n")
-cat("  - pca_loadings_by_type.png\n")
-cat("  - wind_rose_simple.png\n")
-cat("  - wind_rose_with_speed.png\n")
-cat("  - current_rose.png\n")
-cat("  - wind_uv_scatter.png\n")
-cat("  - current_uv_scatter.png\n")
-cat("  - variable_dendrogram.png\n")
-cat("  - high_correlation_pairs.csv\n")
