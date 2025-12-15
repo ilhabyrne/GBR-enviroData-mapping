@@ -3,12 +3,4 @@
 .DS_Store
 .DS_Store
 .DS_Store
-.DS_Store
-02_eReefs/raw/RRAP_eReefs_GBR1_0.5m_currents_wind.csv
-02_eReefs/raw/RRAP_eReefs_GBR1_13m_currents_wind.csv
-02_eReefs/raw/RRAP_eReefs_GBR1_2.35m_currents_wind.csv
-02_eReefs/processed/RRAP_eReefs_GBR1_currents_wind_merged.csv
-02_eReefs/raw/RRAP_eReefs_GBR1_5.35m_currents_wind.csv
-02_eReefs/raw/RRAP_eReefs_GBR1_9m_currents_wind.csv
-02_eReefs/processed/currents_wind_merged.csv
-02_eReefs/processed/currents_wind_all_metrics_MASTER.csv
+02_eReefs/processed/.Rapp.history
