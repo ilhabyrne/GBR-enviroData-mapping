@@ -4,6 +4,9 @@
 # Load libraries
 library(dplyr)
 
+
+# GBR1 ----------------------------------------------------------------------- #
+
 # Set workdir
 setwd("~/Documents/GitHub/GBR-enviroData-mapping/02_eReefs/processed/")
 
@@ -30,3 +33,36 @@ merged_all <- left_join(merged_wind, merged,
                          by = c("individualID"))
 
 write.csv(merged_all, "RRAP_enviro_metadata_all_2025-12-09.csv")
+
+
+
+# BGC ------------------------------------------------------------------------ #
+
+# Load workdir
+setwd("~/Documents/GitHub/GBR-enviroData-mapping/02_eReefs/synthesis")
+
+# Read the files
+bgc_df <- read.csv("BGC_monthly_summary_stats.csv") # summary stats
+rrap_df <- read.csv("RRAP_metadata_coordinates_all_with_ereefs_indices_2025-09-15.csv") # all samples
+
+# Left join - keeps all rows from rrap_df, matches info from bgc_df
+rrap_bgc <- left_join(rrap_df, bgc_df, 
+                    by = c("decimalLatitude", "decimalLongitude"))
+
+write.csv(rrap_bgc, "RRAP_BGC_metadata_2025-12-09.csv")
+
+
+# ALL ------------------------------------------------------------------------ #
+
+# Load workdir
+setwd("~/Documents/GitHub/GBR-enviroData-mapping/02_eReefs/synthesis")
+
+# Read the files
+bgc_df <- read.csv("BGC_monthly_summary_stats.csv") # summary stats
+gbr1_df <- read.csv("RRAP_GBR1_metadata_targetSpp_2025-12-09_clean.csv") # all samples
+
+# Left join - keeps all rows from rrap_df, matches info from bgc_df
+all <- left_join(gbr1_df, bgc_df, 
+                      by = c("decimalLatitude", "decimalLongitude"))
+
+write.csv(all, "RRAP_enviro_metadata_targetSpp_2025-12-09.csv")

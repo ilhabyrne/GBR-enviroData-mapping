@@ -5,33 +5,19 @@
 library(tidyverse)
 library(lubridate)
 
-setwd("~/Documents/GitHub/shysDelineation-WGS/metadata")
+setwd("~/Documents/GitHub/")
 
 # Read and combine all depth files
-# Adjust filenames to match your actual file names
-depth_files <- list.files(pattern = "*.csv", full.names = TRUE)
-
 # Or specify them explicitly:
-# depth_files <- c("depth1.csv", "depth2.csv", "depth3.csv", "depth4.csv", "depth5.csv")
+ depth_files <- c("BGC_monthly_0.5m.csv", "BGC_monthly_2.35m.csv", "BGC_monthly_5.35m.csv", "BGC_monthly_8.8m.csv", "BGC_monthly_13m.csv")
 
 data <- depth_files %>%
   map_dfr(read_csv)
 
-# Standardize column names (adjust if your columns differ)
-data <- data %>%
-  rename(
-    DateTime = data,
-    Variable = variable,
-    Depth = depth,
-    `Site Name` = `site name`,
-    Latitude = lat,
-    Longitude = lon
-  )
-
 # Date parsing - adjust format string to match your date format
 data <- data %>%
   mutate(
-    DateTime = as.POSIXct(DateTime, format = "%Y-%m-%dT%H:%M"),  # adjust format as needed
+    DateTime = as.POSIXct(`Aggregated Date/Time`, format = "%Y-%m-%dT%H:%M"),  # adjust format as needed
     Year = year(DateTime),
     Month = month(DateTime),
     YearMonth = format(DateTime, "%Y-%m")
@@ -99,4 +85,4 @@ existing_cols <- intersect(ordered_cols, names(site_summary_wide))
 site_summary_wide <- site_summary_wide %>%
   select(all_of(existing_cols))
 
-write_csv(site_summary_wide, "eReefs_BGC_monthly_aggregated_wide.csv")
+write_csv(site_summary_wide, "GBR-enviroData-mapping/02_eReefs/synthesis/BGC_monthly_summary_stats.csv")
