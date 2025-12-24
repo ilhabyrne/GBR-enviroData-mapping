@@ -29,15 +29,12 @@ temp_vars <- c("mean_temp", "sd_temp", "skew_temp", "kurtosis_temp",
 wind_vars <- c("mean_wspeed_u", "mean_wspeed_v", "mean_wind_speed", 
                "sd_wind_speed", "cv_wind_speed", "min_wind_speed", 
                "max_wind_speed", "wind_speed_range",
-               "mean_wind_direction", "wind_directional_constancy", 
-               "wind_directional_variability", "mean_wave_energy_proxy", "wind_dispersal_symmetry")
+               "mean_wind_direction")
 
 # Current variables
 current_vars <- c("mean_u", "mean_v", "mean_current_speed", "sd_current_speed",
                   "cv_current_speed", "min_current_speed", "max_current_speed",
-                  "current_speed_range", "mean_current_direction",
-                  "current_transport_potential", "current_dispersal_symmetry",
-                  "current_retention_potential")
+                  "current_speed_range", "mean_current_direction")
 
 # BGC variables - adjust these based on your actual column names
 # Format is typically: {Variable}_{statistic}
@@ -82,9 +79,9 @@ dat_unique <- dat %>%
 cor_matrix_full <- cor(dat_unique[, env_vars], use = "pairwise.complete.obs")
 
 # Plot full correlation matrix
-png("correlation_matrix_full.png", width = 14, height = 14, units = "in", res = 150)
+png("correlation_matrix_full.png", width = 14, height = 14, units = "in", res = 600)
 corrplot(cor_matrix_full, method = "color", type = "upper", 
-         order = "hclust", tl.cex = 1, tl.col = "black",
+         order = "hclust", tl.cex = 1.1, tl.col = "black",
          col = colorRampPalette(c("#2166AC", "#F7F7F7", "#B2182B"))(200),
          mar = c(0, 0, 2, 0))
 dev.off()
@@ -718,7 +715,7 @@ if(all(c("mean_u", "mean_v") %in% names(dat))) {
 var_dist <- as.dist(1 - abs(cor_matrix_full))
 var_clust <- hclust(var_dist, method = "complete")
 
-png("variable_dendrogram.png", width = 14, height = 8, units = "in", res = 150)
+png("variable_dendrogram.png", width = 12, height = 6, units = "in", res = 600)
 plot(var_clust, main = "",
      xlab = "", sub = "Based on correlation distance (1 - |r|)")
 abline(h = 0.3, col = "red", lty = 2)  # Cut-off for r > 0.7
@@ -730,7 +727,7 @@ cor_matrix_bgc <- cor(dat_bgc_complete[, bgc_vars_present], use = "pairwise.comp
 var_dist <- as.dist(1 - abs(cor_matrix_bgc))
 var_clust <- hclust(var_dist, method = "complete")
 
-png("bgc_variable_dendrogram.png", width = 10, height = 6, units = "in", res = 150)
+png("bgc_variable_dendrogram.png", width = 10, height = 6, units = "in", res = 600)
 plot(var_clust, main = "BGC Variable Clustering",
      xlab = "", sub = "Based on correlation distance (1 - |r|)")
 abline(h = 0.3, col = "red", lty = 2)  # r > 0.7 threshold

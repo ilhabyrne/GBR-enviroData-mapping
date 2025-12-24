@@ -9,10 +9,12 @@ library(Hmisc)
 library(ggrepel)
 library(viridis)
 library(patchwork)
+library(RColorBrewer)
+
 
 # Load data
 setwd("~/Documents/GitHub/GBR-enviroData-mapping/03_viz")
-dat <- read.csv("~/Documents/GitHub/GBR-enviroData-mapping/02_eReefs/processed/RRAP_enviro_metadata_targetSpp_2025-12-09_clean.csv")
+dat <- read.csv("~/Documents/GitHub/GBR-enviroData-mapping/02_eReefs/synthesis/RRAP_GBR1_metadata_targetSpp_2025-12-09_clean.csv")
 
 # -----------------------------------------------------------------------------
 # 1. DEFINE VARIABLE GROUPS
@@ -29,15 +31,12 @@ temp_vars <- c("mean_temp", "sd_temp", "skew_temp", "kurtosis_temp",
 wind_vars <- c("mean_wspeed_u", "mean_wspeed_v", "mean_wind_speed", 
                "sd_wind_speed", "cv_wind_speed", "min_wind_speed", 
                "max_wind_speed", "wind_speed_range",
-               "mean_wind_direction", "wind_directional_constancy", 
-               "wind_directional_variability", "mean_wave_energy_proxy", "wind_dispersal_symmetry")
+               "mean_wind_direction")
 
 # Current variables
 current_vars <- c("mean_u", "mean_v", "mean_current_speed", "sd_current_speed",
                   "cv_current_speed", "min_current_speed", "max_current_speed",
-                  "current_speed_range", "mean_current_direction",
-                  "current_transport_potential", "current_dispersal_symmetry",
-                  "current_retention_potential")
+                  "current_speed_range", "mean_current_direction")
 
 # Get all numeric variables present in the data
 all_numeric <- names(dat)[sapply(dat, is.numeric)]
@@ -180,7 +179,7 @@ p_temp_metrics <- ggplot(temp_long, aes(x = decimalLatitude, y = temperature)) +
   theme(legend.position = "right")
 p_temp_metrics
 
-ggsave(plot = p_temp_metrics, "mean_temp_metrics.png", dpi = 300, width = 8, height = 6)
+ggsave(plot = p_temp_metrics, "mean_temp_metrics.png", dpi = 300, width = 6, height = 4)
 
 # --- 3c. Temperature by site (red = hot, blue = cold) ---
 site_summary <- dat %>%
@@ -211,8 +210,8 @@ p_temp_site <- ggplot(site_subset, aes(x = locality_ordered, y = mean_temp)) +
   scale_color_gradientn(
     colors = c("#2166AC", "#4393C3", "#92C5DE", "#F4A582", "#D6604D", "#B2182B"),
     name = "Mean Temp (°C)") +
-  labs(x = "Reef (ordered N to S)", y = "Mean Temperature (°C)", 
-       subtitle = "Error bars = temporal SD",
+  labs(x = "Reef (ordered N to S)", y = "Mean temperature (°C)", 
+       subtitle = "",
        size = "N samples") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
@@ -221,62 +220,137 @@ p_temp_site
 ggsave(plot = p_temp_site, "mean_SD_temp.png", dpi = 300, width = 6, height = 4)
 
 # -----------------------------------------------------------------------------
-# 4. PCA OF ENVIRONMENTAL VARIABLES
+# 4. CREATE COLOUR PALETTE
 # -----------------------------------------------------------------------------
 
-library(RColorBrewer)
-
-# Create palette
 colR <- colorRampPalette(brewer.pal(11, "RdYlBu"))(29)
 
-# Override the problem colors
-colR[15] <- "#A1D99B"  # Chicken - light green
-colR[16] <- "#74C476"  # Davies - medium light green
-colR[17] <- "#41AB5D"  # Little Broadhurst - slightly darker green
-colR[18] <- "#6BAED6"  # Martin - darker light blue
-colR[19] <- "#4292C6"  # East Cay - slightly darker blue
-colR[27] <- "#4292C6"  # Sykes - slightly darker blue
+# Override problem colors for better distinction
+colR[15] <- "#A1D99B"
+colR[16] <- "#74C476"
+colR[17] <- "#41AB5D"
+colR[18] <- "#6BAED6"
+colR[19] <- "#4292C6"
+colR[27] <- "#4292C6"
 
-# Create named vector matching your locality column names
-# Adjust these to match exactly what's in your data
+# Named vector matching locality column names
 locality_colors <- c(
-  "Dungeness"        = colR[1],
-  "Masig"            = colR[2],
-  "Aukane"           = colR[3],
-  "Hicks"            = colR[4],
-  "No_Name"          = colR[5],
-  "Lizard"           = colR[6],
-  "Martin"           = colR[6],
-  "North_Direction"  = colR[7],
-  "Mackay"           = colR[8],
-  "St_Crispin"       = colR[9],
-  "Moore_Reef"       = colR[10],
-  "Fitzroy_Island"   = colR[11],
-  "Kelso"            = colR[12],
-  "Pelorus"          = colR[13],
-  "Orpheus"          = colR[14],
-  "Chicken"          = colR[15],
-  "Davies"           = colR[16],
-  "Little_Broadhurst"= colR[17],
-  "East_Cay"         = colR[19],
-  "Reef21-550"      = colR[20],
-  "North_Keppel"     = colR[21],
-  "Miall"            = colR[22],
-  "Middle"           = colR[23],
-  "Great_Keppel"     = colR[24],
-  "Halfway"          = colR[25],
-  "Heron"            = colR[26],
-  "Sykes"            = colR[27],
-  "Fitzroy_Reef"     = colR[28],
-  "Lady_Musgrave"    = colR[29]
+  "Dungeness"         = colR[1],
+  "Masig"             = colR[2],
+  "Aukane"            = colR[3],
+  "Hicks"             = colR[4],
+  "No_Name"           = colR[5],
+  "Lizard"            = colR[6],
+  "Martin"            = colR[6],
+  "North_Direction"   = colR[7],
+  "Mackay"            = colR[8],
+  "St_Crispin"        = colR[9],
+  "Moore_Reef"        = colR[10],
+  "Fitzroy_Island"    = colR[11],
+  "Kelso"             = colR[12],
+  "Pelorus"           = colR[13],
+  "Orpheus"           = colR[14],
+  "Chicken"           = colR[15],
+  "Davies"            = colR[16],
+  "Little_Broadhurst" = colR[17],
+  "East_Cay"          = colR[19],
+  "Reef21-550"        = colR[20],
+  "North_Keppel"      = colR[21],
+  "Miall"             = colR[22],
+  "Middle"            = colR[23],
+  "Great_Keppel"      = colR[24],
+  "Halfway"           = colR[25],
+  "Heron"             = colR[26],
+  "Sykes"             = colR[27],
+  "Fitzroy_Reef"      = colR[28],
+  "Lady_Musgrave"     = colR[29]
 )
 
-pca_result <- prcomp(dat_unique[, env_vars], center = TRUE, scale. = TRUE)
+# =============================================================================
+# 5. PREPARE DATA - UNIQUE SITES
+# =============================================================================
+
+# Get unique locations to avoid pseudoreplication
+dat_unique <- dat %>%
+  distinct(locality, .keep_all = TRUE) %>%
+  dplyr::select(locality, decimalLatitude, all_of(env_vars))
+
+cat("Unique localities:", nrow(dat_unique), "\n")
+
+# =============================================================================
+# 5. DIAGNOSE MISSING DATA
+# =============================================================================
+
+cat("\n=== Missing Data Diagnosis ===\n")
+
+# Check for NAs in each variable
+na_counts <- sapply(dat_unique[, env_vars], function(x) sum(is.na(x)))
+if (any(na_counts > 0)) {
+  cat("Variables with missing data:\n")
+  print(na_counts[na_counts > 0])
+}
+
+# Check for infinite values
+inf_counts <- sapply(dat_unique[, env_vars], function(x) sum(is.infinite(x)))
+if (any(inf_counts > 0)) {
+  cat("Variables with infinite values:\n")
+  print(inf_counts[inf_counts > 0])
+}
+
+# Summary
+cat("\nTotal rows:", nrow(dat_unique), "\n")
+cat("Complete cases:", sum(complete.cases(dat_unique[, env_vars])), "\n")
+
+# =============================================================================
+# 5. HANDLE MISSING DATA FOR PCA
+# =============================================================================
+
+# Option A: Keep only variables with <10% missing
+na_prop <- na_counts / nrow(dat_unique)
+good_vars <- env_vars[na_prop < 0.1]
+cat("\nVariables with <10% missing:", length(good_vars), "of", length(env_vars), "\n")
+
+# Option B: Create complete dataset
+dat_unique_complete <- dat_unique %>%
+  dplyr::select(locality, decimalLatitude, all_of(good_vars)) %>%
+  filter(complete.cases(across(all_of(good_vars))))
+
+cat("Complete cases for PCA:", nrow(dat_unique_complete), "\n")
+
+# =============================================================================
+# 5. SITE SUMMARY FOR PLOTS
+# =============================================================================
+
+site_summary <- dat %>%
+  group_by(locality) %>%
+  summarise(
+    decimalLatitude = mean(decimalLatitude, na.rm = TRUE),
+    n_samples = n(),
+    mean_temp = first(mean_temp),
+    sd_temp = first(sd_temp),
+    MaxMonthMean = first(MaxMonthMean),
+    MinMonthMean = first(MinMonthMean),
+    .groups = "drop"
+  )
+
+cat("Site summary created:", nrow(site_summary), "sites\n")
+
+# =============================================================================
+# 5. PCA ANALYSIS
+# =============================================================================
+
+cat("\n=== PCA Analysis ===\n")
+
+# Run PCA on complete data
+pca_result <- prcomp(dat_unique_complete[, good_vars], center = TRUE, scale. = TRUE)
 pca_summary <- summary(pca_result)
+
+cat("PCA Variance Explained:\n")
+print(pca_summary$importance[, 1:5])
 
 # Extract scores
 pca_scores <- as.data.frame(pca_result$x) %>%
-  mutate(locality = dat_unique$locality)
+  mutate(locality = dat_unique_complete$locality)
 
 # Extract loadings
 pca_loadings <- as.data.frame(pca_result$rotation) %>%
@@ -297,7 +371,7 @@ top_loadings <- pca_loadings %>%
 pca_scores_focal <- pca_scores %>%
   filter(!locality %in% c("Dungeness", "Tydeman", "MacGillivray",
                           "Myrmidon", "Magnetic_Island", "North_Keppel",
-                          "Miall", "Middle", "Halfway", "Great_Keppel", 
+                          "Miall", "Middle", "Halfway", "Great_Keppel",
                           "Lizard", "Moore_Reef"))
 
 # Get latitude order (N to S)
@@ -311,10 +385,9 @@ locality_lat_order <- dat %>%
 pca_scores_focal <- pca_scores_focal %>%
   mutate(locality = factor(locality, levels = locality_lat_order))
 
-# --- 4a. PCA by reef ---
-# Color points by reef
+# --- 5a. PCA biplot by reef ---
 p_pca <- ggplot() +
-  geom_point(data = pca_scores_focal, aes(x = PC1, y = PC2, color = locality), 
+  geom_point(data = pca_scores_focal, aes(x = PC1, y = PC2, color = locality),
              alpha = 0.8, size = 4) +
   geom_segment(data = top_loadings,
                aes(x = 0, y = 0, xend = PC1 * scale_factor * 0.8, yend = PC2 * scale_factor * 0.8),
@@ -325,17 +398,36 @@ p_pca <- ggplot() +
   scale_color_manual(values = locality_colors, name = "Reef") +
   labs(x = paste0("PC1 (", round(pca_summary$importance[2,1]*100, 1), "%)"),
        y = paste0("PC2 (", round(pca_summary$importance[2,2]*100, 1), "%)"),
+       title = "PCA of Environmental Variables",
        subtitle = "Top 15 loadings shown") +
   theme_bw() +
   coord_fixed() +
   guides(color = guide_legend(ncol = 1))
 
 p_pca
+ggsave("pca_biplot_focal.png", p_pca, width = 10, height = 8, dpi = 300)
 
-ggsave("pca_biplot_focal.png", p_pca, width = 6, height = 5, dpi = 300)
+# --- 5b. Scree plot ---
+var_explained <- data.frame(
+  PC = paste0("PC", 1:length(pca_summary$importance[2,])),
+  variance = pca_summary$importance[2,] * 100,
+  cumulative = pca_summary$importance[3,] * 100
+) %>%
+  mutate(PC = factor(PC, levels = PC))
 
-# --- 4b. PCA by variable type ---
-# Color loadings by variable type
+p_scree <- ggplot(var_explained[1:10,], aes(x = PC)) +
+  geom_col(aes(y = variance), fill = "#0072B2", alpha = 0.7) +
+  geom_line(aes(y = cumulative, group = 1), color = "#D55E00", linewidth = 1) +
+  geom_point(aes(y = cumulative), color = "#D55E00", size = 3) +
+  geom_hline(yintercept = 80, linetype = "dashed", color = "gray50") +
+  labs(x = "Principal Component", y = "Variance Explained (%)",
+       title = "PCA Scree Plot",
+       subtitle = "Bars = individual, Line = cumulative") +
+  theme_bw()
+
+ggsave("pca_scree.png", p_scree, width = 8, height = 5, dpi = 150)
+
+# --- 5c. PCA loadings by variable type ---
 pca_loadings <- pca_loadings %>%
   mutate(var_type = case_when(
     variable %in% temp_vars ~ "Temperature",
@@ -347,11 +439,12 @@ pca_loadings <- pca_loadings %>%
 p_loadings <- ggplot(pca_loadings, aes(x = PC1, y = PC2, color = var_type)) +
   geom_point(size = 3, alpha = 0.7) +
   geom_text_repel(aes(label = variable), size = 2, max.overlaps = 20) +
-  scale_color_manual(values = c("Temperature" = "#D55E00", "Wind" = "#0072B2", 
-                                "Current" = "#009E73", "Other" = "gray50")) +
+  scale_color_manual(values = c("Temperature" = "#D55E00", "Current" = "#0072B2",
+                                "Wind" = "#009E73", "Other" = "gray50")) +
   labs(x = paste0("PC1 (", round(pca_summary$importance[2,1]*100, 1), "%)"),
        y = paste0("PC2 (", round(pca_summary$importance[2,2]*100, 1), "%)"),
-       color = "Variable Type") +
+       title = "",
+       color = "Variable type") +
   theme_bw() +
   coord_fixed()
 
@@ -359,8 +452,60 @@ p_loadings
 ggsave("pca_loadings_by_type.png", p_loadings, width = 5, height = 5, dpi = 300)
 
 # -----------------------------------------------------------------------------
-# 5. WIND ROSE VISUALIZATION
+# 6. WIND ROSE VISUALIZATION
 # -----------------------------------------------------------------------------
+
+if (all(c("mean_wspeed_u", "mean_wspeed_v", "mean_wind_speed") %in% names(dat))) {
+  
+  # Calculate wind direction from u, v components
+  wind_vectors <- dat_unique %>%
+    dplyr::select(locality, decimalLatitude, mean_wspeed_u, mean_wspeed_v, mean_wind_speed) %>%
+    drop_na() %>%
+    mutate(
+      wind_direction = (270 - atan2(mean_wspeed_v, mean_wspeed_u) * 180/pi) %% 360
+    ) %>%
+    filter(!locality %in% c("Dungeness", "Tydeman", "MacGillivray",
+                            "Myrmidon", "Magnetic_Island", "North_Keppel",
+                            "Miall", "Middle", "Halfway", "Great_Keppel",
+                            "Lizard", "Moore_Reef"))
+  
+  # Order by latitude
+  wind_vectors <- wind_vectors %>%
+    mutate(locality = factor(locality, levels = locality_lat_order))
+  
+  # U-V scatter plot with arrows
+  p_wind_uv <- ggplot(wind_vectors, aes(x = mean_wspeed_u, y = mean_wspeed_v, color = locality)) +
+    geom_segment(aes(x = 0, y = 0, xend = mean_wspeed_u, yend = mean_wspeed_v),
+                 arrow = arrow(length = unit(0.2, "cm")), alpha = 0.8) +
+    geom_point(size = 3) +
+    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.3) +
+    geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.3) +
+    scale_color_manual(values = locality_colors, name = "Locality") +
+    labs(x = "Mean U Component (E-W)", y = "Mean V Component (N-S)",
+         title = "Mean Wind Vectors by Locality",
+         subtitle = "Arrows from origin show mean wind direction and magnitude") +
+    theme_bw() +
+    coord_fixed() +
+    guides(color = guide_legend(ncol = 1))
+  
+  ggsave("wind_uv_vectors.png", p_wind_uv, width = 10, height = 8, dpi = 150)
+  
+  # Polar plot
+  p_wind_polar <- ggplot(wind_vectors, aes(x = wind_direction, y = mean_wind_speed, color = locality)) +
+    geom_point(size = 4, alpha = 0.8) +
+    coord_polar(start = 0) +
+    scale_x_continuous(breaks = seq(0, 315, 45),
+                       labels = c("N", "NE", "E", "SE", "S", "SW", "W", "NW"),
+                       limits = c(0, 360)) +
+    scale_color_manual(values = locality_colors, name = "Locality") +
+    labs(title = "Mean Wind Vector by Locality",
+         subtitle = "Angle = direction, Distance from center = speed",
+         y = "Mean Wind Speed") +
+    theme_minimal() +
+    guides(color = guide_legend(ncol = 1))
+  
+  ggsave("wind_polar_plot.png", p_wind_polar, width = 10, height = 10, dpi = 150)
+}
 
 # -----------------------------------------------------------------------------
 # WIND ROSES BY LOCALITY
